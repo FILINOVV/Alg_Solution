@@ -1,0 +1,337 @@
+<Window x:Class="LabApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+        Title="Лабораторная работа №1" Height="900" Width="1440"
+        Background="{DynamicResource BgBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}"
+        WindowStartupLocation="CenterScreen"
+        FontFamily="Segoe UI">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ===== Сайдбар ===== -->
+        <Border Grid.Column="0" Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Margin="24,24,24,12">
+                    <TextBlock Text="Сложность алгоритмов" FontSize="17" FontWeight="Bold" TextWrapping="Wrap"/>
+                    <TextBlock Text="Лабораторная работа №1" FontSize="12" Margin="0,2,0,0"
+                               Foreground="{DynamicResource TextSecondaryBrush}"/>
+                </StackPanel>
+
+                <Button x:Name="ThemeToggleButton" DockPanel.Dock="Bottom" Margin="12,12,12,20" Height="40"
+                        Style="{StaticResource SecondaryButtonStyle}" Click="ThemeToggle_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="ThemeIcon" FontFamily="Segoe MDL2 Assets" FontSize="14"
+                                   VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock x:Name="ThemeLabel" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <StackPanel DockPanel.Dock="Top" Margin="0,8,0,0">
+                    <RadioButton x:Name="NavVector" Content="Часть I · Векторы" GroupName="Nav" Style="{StaticResource SidebarItemStyle}" IsChecked="True" Checked="Nav_Changed"/>
+                    <RadioButton x:Name="NavMatrix" Content="Часть II · Матрицы" GroupName="Nav" Style="{StaticResource SidebarItemStyle}" Checked="Nav_Changed"/>
+                    <RadioButton x:Name="NavPower" Content="Часть IV · Возведение в степень" GroupName="Nav" Style="{StaticResource SidebarItemStyle}" Checked="Nav_Changed"/>
+                    <RadioButton x:Name="NavHistory" Content="История и сравнение" GroupName="Nav" Style="{StaticResource SidebarItemStyle}" Checked="Nav_Changed"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ===== Основная область ===== -->
+        <Grid Grid.Column="1" Margin="24">
+
+            <!-- ================= РАЗДЕЛ 1: ВЕКТОРЫ (Часть I + III) ================= -->
+            <Grid x:Name="VectorPanel" Visibility="Visible">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="300"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource CardStyle}" Margin="0,0,16,16">
+                    <StackPanel>
+                        <TextBlock Text="Параметры эксперимента" Style="{StaticResource SectionTitleStyle}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="100"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Алгоритм" Style="{StaticResource FieldLabelStyle}"/>
+                                <ComboBox x:Name="AlgorithmCombo"
+                                          DisplayMemberPath="Name" SelectionChanged="AlgorithmCombo_SelectionChanged"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="N max" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="NMaxBox" Text="2000"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Text="Шаг" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="StepBox" Text="50"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="6">
+                                <TextBlock Text="Прогонов" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="RunsBox" Text="5"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock x:Name="RecommendedNMaxText" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,6,0,0"/>
+
+                        <Grid Margin="0,16,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <CheckBox x:Name="UseCacheBox" Content="Использовать кэш (снять — принудительный пересчёт)" IsChecked="True" VerticalAlignment="Center"/>
+                            <Button Grid.Column="2" Content="▶  Запустить эксперимент" Style="{StaticResource PrimaryButtonStyle}" Click="RunButton_Click"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" Style="{StaticResource CardStyle}" Margin="0,0,0,16" VerticalAlignment="Top">
+                    <StackPanel>
+                        <TextBlock Text="Информация" Style="{StaticResource SectionTitleStyle}"/>
+                        <TextBlock Text="Алгоритм" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock x:Name="InfoNameText" FontWeight="SemiBold" Margin="0,0,0,14" TextWrapping="Wrap"/>
+                        <TextBlock Text="Сложность (теоретическая)" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock x:Name="InfoComplexityText" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,14"/>
+                        <TextBlock Text="Описание" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock x:Name="InfoDescriptionText" TextWrapping="Wrap" Margin="0,0,0,14" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource CardStyle}" Margin="0,0,16,16">
+                    <DockPanel>
+                        <Grid DockPanel.Dock="Top" Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Результаты эксперимента" Style="{StaticResource SectionTitleStyle}"
+                                       Margin="0" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Content="Сохранить PNG" Margin="12,0,0,0" VerticalAlignment="Center"
+                                    Style="{StaticResource SecondaryButtonStyle}" Tag="ResultChart" Click="ExportChart_Click"/>
+                        </Grid>
+                        <lvc:CartesianChart x:Name="ResultChart"/>
+                    </DockPanel>
+                </Border>
+
+                <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Style="{StaticResource CardStyle}">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="Таблица результатов (среднее время)" Style="{StaticResource SectionTitleStyle}"/>
+                        <DataGrid x:Name="ResultsGrid" AutoGenerateColumns="False" IsReadOnly="True"
+                                  Height="200" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                                  BorderThickness="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="n" Binding="{Binding N}" Width="*"/>
+                                <DataGridTextColumn Header="Время (мс)" Binding="{Binding AvgTimeMs, StringFormat=G5}" Width="*"/>
+                                <DataGridTextColumn Header="Ст. отклонение" Binding="{Binding StdDevMs, StringFormat=G5}" Width="*"/>
+                                <DataGridTextColumn Header="Кол-во запусков" Binding="{Binding Runs}" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                </Border>
+            </Grid>
+
+            <!-- ================= РАЗДЕЛ 2: МАТРИЦЫ (Часть II) ================= -->
+            <Grid x:Name="MatrixPanel" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Style="{StaticResource CardStyle}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="Параметры эксперимента: умножение матриц A(n×m) × B(m×n)" Style="{StaticResource SectionTitleStyle}"/>
+                        <TextBlock Text="Классический алгоритм, теоретическая сложность O(n²·m)" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,-10,0,14"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="220"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="N max" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="MatrixNMaxBox" Text="200"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Шаг" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="MatrixStepBox" Text="20"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Text="Прогонов" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="MatrixRunsBox" Text="3"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="6">
+                                <TextBlock Text="Значения m (через запятую)" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="MatrixMValuesBox" Text="20,50,100"/>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Margin="0,16,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <CheckBox x:Name="MatrixUseCacheBox" Content="Использовать кэш" IsChecked="True" VerticalAlignment="Center"/>
+                            <Button Grid.Column="2" Content="▶  Запустить эксперимент" Style="{StaticResource PrimaryButtonStyle}" Click="MatrixRunButton_Click"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="1" Style="{StaticResource CardStyle}" Margin="0,0,0,16">
+                    <DockPanel>
+                        <Grid DockPanel.Dock="Top" Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Время от n, отдельная линия для каждого m (срезы трёхмерной зависимости T(n,m))" Style="{StaticResource SectionTitleStyle}"
+                                       Margin="0" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Content="Сохранить PNG" Margin="12,0,0,0" VerticalAlignment="Center"
+                                    Style="{StaticResource SecondaryButtonStyle}" Tag="MatrixChart" Click="ExportChart_Click"/>
+                        </Grid>
+                        <lvc:CartesianChart x:Name="MatrixChart"/>
+                    </DockPanel>
+                </Border>
+
+                <Border Grid.Row="2" Style="{StaticResource CardStyle}">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="Таблица результатов" Style="{StaticResource SectionTitleStyle}"/>
+                        <DataGrid x:Name="MatrixGrid" AutoGenerateColumns="False" IsReadOnly="True"
+                                  Height="180" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                                  BorderThickness="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="n" Binding="{Binding N}" Width="*"/>
+                                <DataGridTextColumn Header="m" Binding="{Binding M}" Width="*"/>
+                                <DataGridTextColumn Header="Время (мс)" Binding="{Binding AvgTimeMs, StringFormat=G5}" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                </Border>
+            </Grid>
+
+            <!-- ================= РАЗДЕЛ 3: СТЕПЕНИ (Часть IV) ================= -->
+            <Grid x:Name="PowerPanel" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Style="{StaticResource CardStyle}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="Алгоритмы возведения в степень — считаем количество операций, не время" Style="{StaticResource SectionTitleStyle}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="220"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="N max" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="PowerNMaxBox" Text="1000"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Шаг" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="PowerStepBox" Text="5"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="4" VerticalAlignment="Bottom">
+                                <CheckBox x:Name="PowerUseCacheBox" Content="Использовать кэш" IsChecked="True"/>
+                            </StackPanel>
+                        </Grid>
+                        <Button Content="▶  Запустить эксперимент" Style="{StaticResource PrimaryButtonStyle}"
+                                HorizontalAlignment="Left" Margin="0,16,0,0" Click="PowerRunButton_Click"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="1" Style="{StaticResource CardStyle}" Margin="0,0,0,16">
+                    <DockPanel>
+                        <Grid DockPanel.Dock="Top" Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Количество шагов от n: простой O(n), рекурсивный O(n), быстрый бинарный O(log n)" Style="{StaticResource SectionTitleStyle}"
+                                       Margin="0" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Content="Сохранить PNG" Margin="12,0,0,0" VerticalAlignment="Center"
+                                    Style="{StaticResource SecondaryButtonStyle}" Tag="PowerChart" Click="ExportChart_Click"/>
+                        </Grid>
+                        <lvc:CartesianChart x:Name="PowerChart"/>
+                    </DockPanel>
+                </Border>
+
+                <Border Grid.Row="2" Style="{StaticResource CardStyle}">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="Таблица результатов" Style="{StaticResource SectionTitleStyle}"/>
+                        <DataGrid x:Name="PowerGrid" AutoGenerateColumns="False" IsReadOnly="True"
+                                  Height="180" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                                  BorderThickness="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="n" Binding="{Binding N}" Width="*"/>
+                                <DataGridTextColumn Header="Простой (шагов)" Binding="{Binding SimpleSteps}" Width="*"/>
+                                <DataGridTextColumn Header="Рекурсивный (шагов)" Binding="{Binding RecursiveSteps}" Width="*"/>
+                                <DataGridTextColumn Header="Быстрый (шагов)" Binding="{Binding FastSteps}" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                </Border>
+            </Grid>
+
+            <!-- ================= РАЗДЕЛ 4: ИСТОРИЯ И СРАВНЕНИЕ ================= -->
+            <Grid x:Name="HistoryPanel" Visibility="Collapsed">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="360"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource CardStyle}" Margin="0,0,16,0">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="История экспериментов" Style="{StaticResource SectionTitleStyle}"/>
+                        <Button DockPanel.Dock="Bottom" Content="Сравнить отмеченные на одном графике"
+                                Style="{StaticResource PrimaryButtonStyle}" Margin="0,12,0,0" Click="CompareButton_Click"/>
+                        <ListBox x:Name="HistoryList" BorderThickness="0"/>
+                    </DockPanel>
+                </Border>
+
+                <Border Grid.Column="1" Style="{StaticResource CardStyle}">
+                    <DockPanel>
+                        <Grid DockPanel.Dock="Top" Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Сравнение выбранных экспериментов" Style="{StaticResource SectionTitleStyle}"
+                                       Margin="0" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Content="Сохранить PNG" Margin="12,0,0,0" VerticalAlignment="Center"
+                                    Style="{StaticResource SecondaryButtonStyle}" Tag="HistoryChart" Click="ExportChart_Click"/>
+                        </Grid>
+                        <lvc:CartesianChart x:Name="HistoryChart"/>
+                    </DockPanel>
+                </Border>
+            </Grid>
+
+        </Grid>
+    </Grid>
+</Window>
