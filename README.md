@@ -163,7 +163,7 @@ LabApp/
 Через командную строку:
 
 ```bash
-git clone https://github.com/<username>/LabApp.git
+git clone https://github.com/FILINOVV/LabApp.git
 cd LabApp
 dotnet run -c Release --project LabApp/LabApp.csproj
 ```
