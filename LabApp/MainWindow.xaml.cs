@@ -1,16 +1,11 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using LabApp.Algorithms;
 using LabApp.Models;
 using LabApp.Services;
 using LabApp.Ui;
-using LiveChartsCore;
-using LiveChartsCore.Defaults;
-using LiveChartsCore.SkiaSharpView;
-using LiveChartsCore.SkiaSharpView.Painting;
-using SkiaSharp;
-using WpfChart = LiveChartsCore.SkiaSharpView.WPF.CartesianChart;
 
 namespace LabApp
 {
@@ -28,15 +23,12 @@ namespace LabApp
         private readonly MatrixBenchmarkService _matrixBenchmark;
         private readonly PowerBenchmarkService _powerBenchmark;
 
-        // Цвета линий подобраны так, чтобы читаться и на светлом, и на тёмном фоне
-        private static readonly SKColor[] Palette =
+        // Цвета серий подобраны так, чтобы читаться и на светлом, и на тёмном фоне
+        private static readonly Color[] Palette =
         {
-            SKColor.Parse("#3B82F6"), SKColor.Parse("#F97316"), SKColor.Parse("#10B981"),
-            SKColor.Parse("#A855F7"), SKColor.Parse("#EAB308"), SKColor.Parse("#EF4444")
+            Color.FromRgb(0x3B, 0x82, 0xF6), Color.FromRgb(0xF9, 0x73, 0x16), Color.FromRgb(0x10, 0xB9, 0x81),
+            Color.FromRgb(0xA8, 0x55, 0xF7), Color.FromRgb(0xEA, 0xB3, 0x08), Color.FromRgb(0xEF, 0x44, 0x44)
         };
-
-        // Подписи осей каждого графика — нужны при смене темы и при экспорте в PNG
-        private readonly Dictionary<WpfChart, (string X, string Y)> _chartTitles = new();
 
         public MainWindow()
         {
@@ -53,10 +45,10 @@ namespace LabApp
             AppTheme.ThemeChanged += OnThemeChanged;
             Closed += (_, _) => AppTheme.ThemeChanged -= OnThemeChanged;
 
-            StyleChart(ResultChart, "Размер вектора n", "Время одного запуска, мс");
-            StyleChart(MatrixChart, "Размер матрицы n", "Время, мс");
-            StyleChart(PowerChart, "Показатель степени n", "Количество умножений");
-            StyleChart(HistoryChart, "n", "Время, мс (для степеней — умножения)");
+            ResultChart.ApplyTheme(AppTheme.Chart);
+            MatrixChart.ApplyTheme(AppTheme.Chart);
+            PowerChart.ApplyTheme(AppTheme.Chart);
+            HistoryChart.ApplyTheme(AppTheme.Chart);
             UpdateThemeButton();
         }
 
@@ -66,22 +58,18 @@ namespace LabApp
 
         private void OnThemeChanged()
         {
-            foreach (var (chart, titles) in _chartTitles)
-                ChartStyler.Apply(chart, titles.X, titles.Y, AppTheme.Chart);
+            ResultChart.ApplyTheme(AppTheme.Chart);
+            MatrixChart.ApplyTheme(AppTheme.Chart);
+            PowerChart.ApplyTheme(AppTheme.Chart);
+            HistoryChart.ApplyTheme(AppTheme.Chart);
             UpdateThemeButton();
         }
 
         private void UpdateThemeButton()
         {
             // Иконки из шрифта Segoe MDL2 Assets: E706 — солнце, E708 — луна
-            ThemeIcon.Text = AppTheme.IsDark ? "\uE706" : "\uE708";
+            ThemeIcon.Text = AppTheme.IsDark ? "" : "";
             ThemeLabel.Text = AppTheme.IsDark ? "Светлая тема" : "Тёмная тема";
-        }
-
-        private void StyleChart(WpfChart chart, string xTitle, string yTitle)
-        {
-            _chartTitles[chart] = (xTitle, yTitle);
-            ChartStyler.Apply(chart, xTitle, yTitle, AppTheme.Chart);
         }
 
         // Время бывает от наносекунд (O(1)) до секунд (пузырёк), поэтому единицу
@@ -95,10 +83,10 @@ namespace LabApp
 
         private void ExportChart_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is not FrameworkElement { Tag: string chartName } || FindName(chartName) is not WpfChart chart)
+            if (sender is not FrameworkElement { Tag: string chartName } || FindName(chartName) is not Chart3DView chart)
                 return;
 
-            if (chart.Series is null || !chart.Series.Any())
+            if (!chart.HasContent)
             {
                 MessageBox.Show("Сначала запустите эксперимент — график пока пустой.");
                 return;
@@ -111,11 +99,10 @@ namespace LabApp
             };
             if (dialog.ShowDialog(this) != true) return;
 
-            var (xTitle, yTitle) = _chartTitles.TryGetValue(chart, out var titles) ? titles : ("n", "");
             try
             {
-                ChartStyler.ExportPng(chart, dialog.FileName, xTitle, yTitle);
-                MessageBox.Show($"График сохранён:\n{dialog.FileName}");
+                chart.ExportPng(dialog.FileName);
+                MessageBox.Show($"График сохранён (текущий ракурс камеры):\n{dialog.FileName}");
             }
             catch (Exception ex)
             {
@@ -178,28 +165,16 @@ namespace LabApp
             var (c, _) = BenchmarkService.Approximate(results, algo.Complexity);
             var (factor, unit) = PickTimeUnit(results.Count > 0 ? results.Max(r => r.AvgTimeMs) : 0);
 
-            var empirical = results.Select(r => new ObservablePoint(r.N, r.AvgTimeMs * factor)).ToArray();
+            var empirical = results.Select(r => ((double)r.N, r.AvgTimeMs * factor)).ToArray();
             var theoretical = results
-                .Select(r => new ObservablePoint(r.N, c * BenchmarkService.TheoreticalF(algo.Complexity, r.N) * factor))
+                .Select(r => ((double)r.N, c * BenchmarkService.TheoreticalF(algo.Complexity, r.N) * factor))
                 .ToArray();
 
-            ResultChart.Series = new ISeries[]
+            ResultChart.ShowSurface(new[]
             {
-                new LineSeries<ObservablePoint>
-                {
-                    Values = empirical, Name = "Эксперимент (среднее)", Fill = null,
-                    GeometrySize = 5, Stroke = new SolidColorPaint(Palette[0], 2),
-                    GeometryStroke = new SolidColorPaint(Palette[0], 2)
-                },
-                new LineSeries<ObservablePoint>
-                {
-                    Values = theoretical, Name = $"Теоретическая кривая {algo.ComplexityLabel}", Fill = null,
-                    GeometrySize = 0, Stroke = new SolidColorPaint(Palette[1], 2)
-                }
-            };
-
-            StyleChart(ResultChart, "Размер вектора n", $"Время одного запуска, {unit}");
-
+                new SurfaceRow(0, empirical, Palette[0], "Эксперимент (среднее)"),
+                new SurfaceRow(1, theoretical, Palette[1], $"Теория {algo.ComplexityLabel}")
+            }, "Размер вектора n", $"Время, {unit}", "Серия");
         }
 
         private void MatrixRunButton_Click(object sender, RoutedEventArgs e)
@@ -237,33 +212,24 @@ namespace LabApp
         private void RenderMatrixResults(List<MatrixSeriesResult> series)
         {
             var tableRows = new List<object>();
-            var chartSeries = new List<ISeries>();
 
             double maxMs = series.SelectMany(ser => ser.Points).Select(pt => pt.AvgTimeMs).DefaultIfEmpty(0).Max();
             var (factor, unit) = PickTimeUnit(maxMs);
 
-            for (int i = 0; i < series.Count; i++)
+            var rows = new List<SurfaceRow>();
+            foreach (var s in series)
             {
-                var s = series[i];
-                var color = Palette[i % Palette.Length];
-
-                chartSeries.Add(new LineSeries<ObservablePoint>
-                {
-                    Values = s.Points.Select(p => new ObservablePoint(p.N, p.AvgTimeMs * factor)).ToArray(),
-                    Name = $"m = {s.M}",
-                    Fill = null,
-                    GeometrySize = 4,
-                    Stroke = new SolidColorPaint(color, 2),
-                    GeometryStroke = new SolidColorPaint(color, 2)
-                });
+                var points = s.Points.Select(p => ((double)p.N, p.AvgTimeMs * factor)).ToArray();
+                rows.Add(new SurfaceRow(s.M, points));
 
                 foreach (var p in s.Points)
                     tableRows.Add(new { p.N, M = s.M, p.AvgTimeMs });
             }
 
-            MatrixChart.Series = chartSeries;
+            // Настоящая 3D-поверхность: X = n, глубина (Z) = m, высота (Y) = время —
+            // в отличие от остальных графиков тут обе оси нижнего уровня — реальные параметры эксперимента
+            MatrixChart.ShowSurface(rows, "Размер матрицы n", $"Время, {unit}", "m");
             MatrixGrid.ItemsSource = tableRows;
-            StyleChart(MatrixChart, "Размер матрицы n", $"Время, {unit}");
         }
 
         private void PowerRunButton_Click(object sender, RoutedEventArgs e)
@@ -296,27 +262,12 @@ namespace LabApp
         {
             PowerGrid.ItemsSource = results;
 
-            PowerChart.Series = new ISeries[]
+            PowerChart.ShowSurface(new[]
             {
-                new LineSeries<ObservablePoint>
-                {
-                    Values = results.Select(r => new ObservablePoint(r.N, r.SimpleSteps)).ToArray(),
-                    Name = "Простой O(n)", GeometrySize = 0, Fill = null,
-                    Stroke = new SolidColorPaint(Palette[0], 2)
-                },
-                new LineSeries<ObservablePoint>
-                {
-                    Values = results.Select(r => new ObservablePoint(r.N, r.RecursiveSteps)).ToArray(),
-                    Name = "Рекурсивный O(n)", GeometrySize = 0, Fill = null,
-                    Stroke = new SolidColorPaint(Palette[1], 2)
-                },
-                new LineSeries<ObservablePoint>
-                {
-                    Values = results.Select(r => new ObservablePoint(r.N, r.FastSteps)).ToArray(),
-                    Name = "Быстрый бинарный O(log n)", GeometrySize = 0, Fill = null,
-                    Stroke = new SolidColorPaint(Palette[2], 2)
-                }
-            };
+                new SurfaceRow(0, results.Select(r => ((double)r.N, (double)r.SimpleSteps)).ToArray(), Palette[0], "Простой O(n)"),
+                new SurfaceRow(1, results.Select(r => ((double)r.N, (double)r.RecursiveSteps)).ToArray(), Palette[1], "Рекурсивный O(n)"),
+                new SurfaceRow(2, results.Select(r => ((double)r.N, (double)r.FastSteps)).ToArray(), Palette[2], "Быстрый бинарный O(log n)")
+            }, "Показатель степени n", "Количество умножений", "Алгоритм");
         }
 
         private void LoadHistoryList()
@@ -347,25 +298,20 @@ namespace LabApp
                 return;
             }
 
-            var chartSeries = new List<ISeries>();
+            var rows = new List<SurfaceRow>();
             for (int i = 0; i < selected.Count; i++)
             {
-                var runId = selected[i].Id;
-                var points = _db.GetMeasurementsForRun(runId);
-                var color = Palette[i % Palette.Length];
-
-                chartSeries.Add(new LineSeries<ObservablePoint>
-                {
-                    Values = points.Select(p => new ObservablePoint(p.N, p.AvgTimeMs)).ToArray(),
-                    Name = selected[i].Label,
-                    Fill = null,
-                    GeometrySize = 3,
-                    Stroke = new SolidColorPaint(color, 2),
-                    GeometryStroke = new SolidColorPaint(color, 2)
-                });
+                var points = _db.GetMeasurementsForRun(selected[i].Id);
+                rows.Add(new SurfaceRow(
+                    i,
+                    points.Select(p => ((double)p.N, p.AvgTimeMs)).ToArray(),
+                    Palette[i % Palette.Length],
+                    selected[i].Label));
             }
 
-            HistoryChart.Series = chartSeries;
+            // Если у сравниваемых экспериментов разное число точек (разные n max/шаг) —
+            // соединяющая поверхность сама не построится, останутся только сами кривые
+            HistoryChart.ShowSurface(rows, "n", "Время, мс (для степеней — умножения)", "Эксперимент");
         }
 
         private static bool TryParsePositiveInts(out int a, out int b, out int c, string sa, string sb, string sc)

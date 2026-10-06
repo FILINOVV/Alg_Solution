@@ -10,7 +10,8 @@ namespace LabApp.Services
 
         public DatabaseService()
         {
-            //старый results.db хранит неверные значения в кэше, поэтому используем новый файл, чтобы кэш их не подтянул.
+            // v2: замеры после исправления методики. Старый results.db хранит неверные
+            // значения в кэше, поэтому используем новый файл, чтобы кэш их не подтянул.
             string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "results_v2.db");
             _connectionString = $"Data Source={dbPath}";
             Initialize();

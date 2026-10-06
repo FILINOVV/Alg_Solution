@@ -2,14 +2,14 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
 using Microsoft.Win32;
-using SkiaSharp;
 
 namespace LabApp.Ui
 {
-    // Цвета для графиков. LiveCharts рисует через SkiaSharp и не видит WPF-ресурсы,
-    // поэтому палитру для графиков держим отдельно, в коде.
-    public record ChartPalette(SKColor Text, SKColor Separator);
+    // Цвета для 3D-графиков (подписи осей, линии сетки). Раньше это рисовалось через SkiaSharp
+    // (LiveCharts), а сейчас — обычными WPF Color/Brush внутри HelixToolkit-сцены.
+    public record ChartPalette(Color Text, Color Separator);
 
     public static class AppTheme
     {
@@ -18,9 +18,11 @@ namespace LabApp.Ui
         // Подписываются те, кому нужно перекраситься вручную (графики, кнопка темы)
         public static event Action? ThemeChanged;
 
-        public static readonly ChartPalette LightChart = new(SKColor.Parse("#6B7280"), SKColor.Parse("#E4E7EC"));
-        public static readonly ChartPalette DarkChart = new(SKColor.Parse("#9AA3B2"), SKColor.Parse("#2A2F3A"));
+        public static readonly ChartPalette LightChart = new(ParseColor("#6B7280"), ParseColor("#E4E7EC"));
+        public static readonly ChartPalette DarkChart = new(ParseColor("#9AA3B2"), ParseColor("#2A2F3A"));
         public static ChartPalette Chart => IsDark ? DarkChart : LightChart;
+
+        private static Color ParseColor(string hex) => (Color)ColorConverter.ConvertFromString(hex);
 
         private static string SettingsPath => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LabApp", "theme.txt");

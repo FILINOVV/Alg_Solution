@@ -11,8 +11,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Локальная база данных -->
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.8" />
-    <PackageReference Include="LiveChartsCore.SkiaSharpView.WPF" Version="2.0.0-rc5.4" />
+    <!-- 3D-визуализация (поверхности и ленточные графики вместо плоских 2D-графиков) -->
+    <PackageReference Include="HelixToolkit.Wpf" Version="2.27.0" />
   </ItemGroup>
 
 </Project>

@@ -1,7 +1,7 @@
 <Window x:Class="LabApp.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+        xmlns:ui="clr-namespace:LabApp.Ui"
         Title="Лабораторная работа №1" Height="900" Width="1440"
         Background="{DynamicResource BgBrush}"
         Foreground="{DynamicResource TextPrimaryBrush}"
@@ -126,7 +126,7 @@
                             <Button Grid.Column="1" Content="Сохранить PNG" Margin="12,0,0,0" VerticalAlignment="Center"
                                     Style="{StaticResource SecondaryButtonStyle}" Tag="ResultChart" Click="ExportChart_Click"/>
                         </Grid>
-                        <lvc:CartesianChart x:Name="ResultChart"/>
+                        <ui:Chart3DView x:Name="ResultChart"/>
                     </DockPanel>
                 </Border>
 
@@ -205,12 +205,12 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Время от n, отдельная линия для каждого m (срезы трёхмерной зависимости T(n,m))" Style="{StaticResource SectionTitleStyle}"
+                            <TextBlock Text="3D-поверхность T(n, m): время умножения как функция двух размеров сразу" Style="{StaticResource SectionTitleStyle}"
                                        Margin="0" TextWrapping="Wrap" VerticalAlignment="Center"/>
                             <Button Grid.Column="1" Content="Сохранить PNG" Margin="12,0,0,0" VerticalAlignment="Center"
                                     Style="{StaticResource SecondaryButtonStyle}" Tag="MatrixChart" Click="ExportChart_Click"/>
                         </Grid>
-                        <lvc:CartesianChart x:Name="MatrixChart"/>
+                        <ui:Chart3DView x:Name="MatrixChart"/>
                     </DockPanel>
                 </Border>
 
@@ -278,7 +278,7 @@
                             <Button Grid.Column="1" Content="Сохранить PNG" Margin="12,0,0,0" VerticalAlignment="Center"
                                     Style="{StaticResource SecondaryButtonStyle}" Tag="PowerChart" Click="ExportChart_Click"/>
                         </Grid>
-                        <lvc:CartesianChart x:Name="PowerChart"/>
+                        <ui:Chart3DView x:Name="PowerChart"/>
                     </DockPanel>
                 </Border>
 
@@ -327,7 +327,7 @@
                             <Button Grid.Column="1" Content="Сохранить PNG" Margin="12,0,0,0" VerticalAlignment="Center"
                                     Style="{StaticResource SecondaryButtonStyle}" Tag="HistoryChart" Click="ExportChart_Click"/>
                         </Grid>
-                        <lvc:CartesianChart x:Name="HistoryChart"/>
+                        <ui:Chart3DView x:Name="HistoryChart"/>
                     </DockPanel>
                 </Border>
             </Grid>
