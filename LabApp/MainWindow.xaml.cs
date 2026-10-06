@@ -134,7 +134,7 @@ namespace LabApp
             RecommendedNMaxText.Text = $"Рекомендуемый N max для этого класса сложности: ~{recommended:N0}";
         }
 
-        private void RunButton_Click(object sender, RoutedEventArgs e)
+        private async void RunButton_Click(object sender, RoutedEventArgs e)
         {
             if (AlgorithmCombo.SelectedItem is not AlgorithmDefinition algo)
             {
@@ -148,14 +148,23 @@ namespace LabApp
                 return;
             }
 
+            // Замеры идут в фоновом потоке — окно не "зависает" на время эксперимента.
+            // Кнопку на это время блокируем, чтобы второй запуск не наложился на первый.
+            var button = sender as Button;
+            if (button != null) button.IsEnabled = false;
             Mouse.OverrideCursor = Cursors.Wait;
             try
             {
+                bool useCache = UseCacheBox.IsChecked == true;
                 int runId = _db.CreateRun(algo.Key, algo.Name, nMax, step, runs);
-                var results = _benchmark.RunExperiment(algo, nMax, step, runs, UseCacheBox.IsChecked == true, runId);
+                var results = await Task.Run(() => _benchmark.RunExperiment(algo, nMax, step, runs, useCache, runId));
                 RenderVectorResults(algo, results);
             }
-            finally { Mouse.OverrideCursor = null; }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+                if (button != null) button.IsEnabled = true;
+            }
         }
 
         private void RenderVectorResults(AlgorithmDefinition algo, List<ExperimentResult> results)
@@ -174,7 +183,7 @@ namespace LabApp
             {
                 new SurfaceRow(0, empirical, Palette[0], "Эксперимент (среднее)"),
                 new SurfaceRow(1, theoretical, Palette[1], $"Теория {algo.ComplexityLabel}")
-            }, "Размер вектора n", $"Время, {unit}", "Серия");
+            }, "Размер вектора n", $"Время, {unit}", "Серия", samePlane: true);
         }
 
         private void MatrixRunButton_Click(object sender, RoutedEventArgs e)
@@ -267,7 +276,7 @@ namespace LabApp
                 new SurfaceRow(0, results.Select(r => ((double)r.N, (double)r.SimpleSteps)).ToArray(), Palette[0], "Простой O(n)"),
                 new SurfaceRow(1, results.Select(r => ((double)r.N, (double)r.RecursiveSteps)).ToArray(), Palette[1], "Рекурсивный O(n)"),
                 new SurfaceRow(2, results.Select(r => ((double)r.N, (double)r.FastSteps)).ToArray(), Palette[2], "Быстрый бинарный O(log n)")
-            }, "Показатель степени n", "Количество умножений", "Алгоритм");
+            }, "Показатель степени n", "Количество умножений", "Алгоритм", samePlane: true);
         }
 
         private void LoadHistoryList()

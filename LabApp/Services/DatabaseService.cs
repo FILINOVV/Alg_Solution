@@ -122,6 +122,38 @@ namespace LabApp.Services
             cmd.ExecuteNonQuery();
         }
 
+        // Сохраняет все точки эксперимента одной пачкой: одно соединение и ОДНА транзакция.
+        // Раньше каждая точка писалась отдельно (новое соединение + отдельная запись на диск),
+        // и на 1000 точек это занимало заметно больше времени, чем сами замеры.
+        public void SaveMeasurements(int runId, string algorithmKey, IEnumerable<ExperimentResult> results)
+        {
+            using var conn = GetConnection();
+            using var tx = conn.BeginTransaction();
+            using var cmd = conn.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = @"
+                INSERT INTO measurements (run_id, algorithm_key, n, avg_time_ms, std_dev_ms, runs)
+                VALUES ($runId, $key, $n, $avg, $std, $runs);";
+            var pRun = cmd.Parameters.Add("$runId", SqliteType.Integer);
+            var pKey = cmd.Parameters.Add("$key", SqliteType.Text);
+            var pN = cmd.Parameters.Add("$n", SqliteType.Integer);
+            var pAvg = cmd.Parameters.Add("$avg", SqliteType.Real);
+            var pStd = cmd.Parameters.Add("$std", SqliteType.Real);
+            var pRuns = cmd.Parameters.Add("$runs", SqliteType.Integer);
+
+            foreach (var r in results)
+            {
+                pRun.Value = runId;
+                pKey.Value = algorithmKey;
+                pN.Value = r.N;
+                pAvg.Value = r.AvgTimeMs;
+                pStd.Value = r.StdDevMs;
+                pRuns.Value = r.Runs;
+                cmd.ExecuteNonQuery();
+            }
+            tx.Commit();
+        }
+
         public List<ExperimentRun> GetHistory()
         {
             var list = new List<ExperimentRun>();

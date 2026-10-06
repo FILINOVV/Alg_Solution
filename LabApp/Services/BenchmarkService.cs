@@ -49,9 +49,11 @@ namespace LabApp.Services
                     point = new ExperimentResult { N = n, AvgTimeMs = avg, StdDevMs = std, Runs = runs };
                 }
 
-                _db.SaveMeasurement(runId, algo.Key, point);
                 results.Add(point);
             }
+
+            // Все точки — в базу одной транзакцией, а не по одной на каждом шаге
+            _db.SaveMeasurements(runId, algo.Key, results);
 
             return results;
         }

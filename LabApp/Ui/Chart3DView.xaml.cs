@@ -22,6 +22,9 @@ namespace LabApp.Ui
         // аккуратно, независимо от реальных масштабов величин (n может быть миллионы, время — доли мс).
         private const double BoxSize = 10.0;
 
+        // Расстояние между соседними кривыми в режиме samePlane (в тех же единицах, что и куб 10×10×10)
+        private const double SamePlaneGap = 0.4;
+
         private readonly ModelVisual3D _sceneRoot = new();
         private Color _textColor = AppTheme.LightChart.Text;
         private Color _gridColor = AppTheme.LightChart.Separator;
@@ -32,13 +35,14 @@ namespace LabApp.Ui
         // Вращение реализовано вручную (а не через встроенный контроллер камеры HelixToolkit),
         // чтобы оно 100% не зависело от того, как у конкретной версии библиотеки настроен хит-тест
         // мыши: крутим не камеру, а саму сцену — двумя поворотами вокруг центра куба.
-        private readonly RotateTransform3D _yawRotate;
-        private readonly RotateTransform3D _pitchRotate;
-        private double _yaw = -28;
-        private double _pitch = 18;
+        // Ориентация сцены хранится одной матрицей и крутится "трекболом": каждое движение мыши
+        // добавляет поворот вокруг осей ЭКРАНА (вправо/влево — вокруг вертикали, вверх/вниз —
+        // вокруг горизонтали). Никаких ограничений по углу — можно перевернуть куб как угодно.
+        private Matrix3D _orient;
+        private static readonly Point3D Center = new(BoxSize / 2, BoxSize / 2, BoxSize / 2);
         private bool _dragging;
         private Point _lastMousePos;
-        private readonly Transform3DGroup _sceneTransform;
+        private readonly MatrixTransform3D _sceneTransform = new();
 
         // Подписи осей — обычные 2D-TextBlock поверх 3D-вида (не 3D-биллборды). Для каждой
         // храним её "локальную" 3D-позицию (в системе координат сцены, ДО поворота), а экранное
@@ -53,9 +57,6 @@ namespace LabApp.Ui
         {
             InitializeComponent();
 
-            double c = BoxSize / 2;
-            var center = new Point3D(c, c, c);
-
             // Камера зафиксирована и смотрит прямо на центр куба; "вращение" — это поворот
             // самой сцены навстречу мыши, а не движение камеры
             // Угол обзора и ближняя/дальняя плоскости — пошире и подальше, чем могло бы хватить
@@ -66,21 +67,9 @@ namespace LabApp.Ui
             // (под большие подписи), поэтому они то "съедались" (пропадали), то появлялись — решение
             // не в подборе ещё одного числа для FontSize, а в том, чтобы дать всей сцене больше
             // места в кадре.
-            Viewport.Camera = new PerspectiveCamera
-            {
-                Position = new Point3D(c, c, c + BoxSize * 2.4),
-                LookDirection = new Vector3D(0, 0, -1),
-                UpDirection = new Vector3D(0, 1, 0),
-                FieldOfView = 58,
-                NearPlaneDistance = 0.1,
-                FarPlaneDistance = 1000
-            };
+            Viewport.Camera = CreateCamera();
 
-            _pitchRotate = new RotateTransform3D(new AxisAngleRotation3D(new Vector3D(1, 0, 0), _pitch), center);
-            _yawRotate = new RotateTransform3D(new AxisAngleRotation3D(new Vector3D(0, 1, 0), _yaw), center);
-            _sceneTransform = new Transform3DGroup();
-            _sceneTransform.Children.Add(_pitchRotate);
-            _sceneTransform.Children.Add(_yawRotate);
+            SetInitialOrientation();
             _sceneRoot.Transform = _sceneTransform;
 
             var lights = new Model3DGroup();
@@ -106,10 +95,49 @@ namespace LabApp.Ui
             CompositionTarget.Rendering += (_, _) => UpdateLabelPositions();
         }
 
+        private static PerspectiveCamera CreateCamera()
+        {
+            double c = BoxSize / 2;
+            return new PerspectiveCamera
+            {
+                Position = new Point3D(c, c, c + BoxSize * 2.4),
+                LookDirection = new Vector3D(0, 0, -1),
+                UpDirection = new Vector3D(0, 1, 0),
+                FieldOfView = 58,
+                NearPlaneDistance = 0.1,
+                FarPlaneDistance = 1000
+            };
+        }
+
+        // Возвращает исходный вид: угол поворота и положение/масштаб камеры (если график
+        // сдвинули или увеличили так, что оси ушли за край окошка)
+        private void ResetView()
+        {
+            SetInitialOrientation();
+            Viewport.Camera = CreateCamera();
+        }
+
+        private static Matrix3D RotationAround(Vector3D axis, double angle) =>
+            new RotateTransform3D(new AxisAngleRotation3D(axis, angle), Center).Value;
+
+        // Стартовый ракурс: чуть сверху и чуть сбоку
+        private void SetInitialOrientation()
+        {
+            _orient = RotationAround(new Vector3D(1, 0, 0), 18) * RotationAround(new Vector3D(0, 1, 0), -28);
+            _sceneTransform.Matrix = _orient;
+        }
+
         // ================= Вращение мышью (ЛКМ-перетаскивание) =================
 
         private void OnDragStart(object sender, MouseButtonEventArgs e)
         {
+            if (e.ClickCount == 2)
+            {
+                ResetView();
+                e.Handled = true;
+                return;
+            }
+
             _dragging = true;
             _lastMousePos = e.GetPosition(Viewport);
             Viewport.CaptureMouse();
@@ -125,11 +153,11 @@ namespace LabApp.Ui
             var dy = pos.Y - _lastMousePos.Y;
             _lastMousePos = pos;
 
-            _yaw += dx * 0.4;
-            _pitch = Math.Clamp(_pitch + dy * 0.4, -89, 89);
-
-            _yawRotate.Rotation = new AxisAngleRotation3D(new Vector3D(0, 1, 0), _yaw);
-            _pitchRotate.Rotation = new AxisAngleRotation3D(new Vector3D(1, 0, 0), _pitch);
+            // Новый поворот добавляется к текущему вокруг осей экрана — без ограничения по углу
+            _orient = _orient
+                * RotationAround(new Vector3D(0, 1, 0), dx * 0.4)
+                * RotationAround(new Vector3D(1, 0, 0), dy * 0.4);
+            _sceneTransform.Matrix = _orient;
 
             e.Handled = true;
         }
@@ -161,13 +189,18 @@ namespace LabApp.Ui
         //    физически бессмысленно — "алгоритм 1.5" не существует). Подписи по оси глубины — просто
         //    номера 1, 2, 3…, а какому номеру какой алгоритм соответствует — смотрим в легенде.
 
-        public void ShowSurface(IReadOnlyList<SurfaceRow> rows, string xTitle, string valueTitle, string depthTitle)
+        // samePlane = true — все кривые лежат В ОДНОЙ плоскости (на одной глубине). Нужно, когда
+        // кривые надо сравнивать между собой по высоте (эксперимент против теории): при разной
+        // глубине перспектива и поворот делают более дальнюю кривую визуально ниже/короче, и
+        // можно "увидеть" что эксперимент лучше теории просто выбрав удачный угол. В одной
+        // плоскости любой поворот искажает обе кривые одинаково.
+        public void ShowSurface(IReadOnlyList<SurfaceRow> rows, string xTitle, string valueTitle, string depthTitle, bool samePlane = false)
         {
-            _redraw = () => BuildSurface(rows, xTitle, valueTitle, depthTitle);
+            _redraw = () => BuildSurface(rows, xTitle, valueTitle, depthTitle, samePlane);
             _redraw();
         }
 
-        private void BuildSurface(IReadOnlyList<SurfaceRow> rows, string xTitle, string valueTitle, string depthTitle)
+        private void BuildSurface(IReadOnlyList<SurfaceRow> rows, string xTitle, string valueTitle, string depthTitle, bool samePlane)
         {
             _sceneRoot.Children.Clear();
             LegendPanel.Children.Clear();
@@ -177,6 +210,7 @@ namespace LabApp.Ui
             var usableRows = rows.Where(r => r.Points.Count > 0).ToList();
 
             bool hasLabels = usableRows.Count > 0 && usableRows.All(r => r.Label != null);
+            samePlane = samePlane && hasLabels;
             LegendBorder.Visibility = hasLabels ? Visibility.Visible : Visibility.Collapsed;
             if (hasLabels)
                 foreach (var row in usableRows)
@@ -194,9 +228,14 @@ namespace LabApp.Ui
             int count = usableRows.Count;
             double MapX(double x) => Norm(x, xMin, xMax) * BoxSize;
             double MapY(double y) => Norm(y, yMin, yMax) * BoxSize;
-            double MapZ(int index, double depth) => hasLabels
-                ? (count <= 1 ? BoxSize / 2 : index / (double)(count - 1) * BoxSize)
-                : Norm(depth, zMin, zMax) * BoxSize;
+            // В режиме "одна плоскость" кривые всё же разведены по глубине на совсем малый шаг
+            // (SamePlaneGap): иначе линии лежат ровно друг на друге и сливаются в одну.
+            // Шаг очень мал, поэтому перспектива почти не искажает сравнение по высоте.
+            double MapZ(int index, double depth) => samePlane
+                ? BoxSize / 2 + (index - (count - 1) / 2.0) * SamePlaneGap
+                : hasLabels
+                    ? (count <= 1 ? BoxSize / 2 : index / (double)(count - 1) * BoxSize)
+                    : Norm(depth, zMin, zMax) * BoxSize;
 
             if (hasLabels)
             {
@@ -213,11 +252,12 @@ namespace LabApp.Ui
 
                     _sceneRoot.Children.Add(new LinesVisual3D { Points = ToSegments(top), Color = color, Thickness = 2.2 });
 
+                    double wallZ = z;
                     var flat = new List<Point3D>();
                     foreach (var p in top)
                     {
-                        flat.Add(new Point3D(p.X, 0, p.Z));
-                        flat.Add(p);
+                        flat.Add(new Point3D(p.X, 0, wallZ));
+                        flat.Add(new Point3D(p.X, p.Y, wallZ));
                     }
                     var mb = new MeshBuilder();
                     mb.AddRectangularMesh(flat, 2);
@@ -225,7 +265,10 @@ namespace LabApp.Ui
                     _sceneRoot.Children.Add(new MeshGeometryVisual3D
                     {
                         MeshGeometry = mb.ToMesh(),
-                        Fill = wallBrush,
+                        // Material задаём явно (только Diffuse), а не через Fill: Fill в HelixToolkit
+                        // добавляет к материалу белый зеркальный слой (Specular) — это и был
+                        // белый "блик от лампы", перекрывающий цвет стенки
+                        Material = new DiffuseMaterial(wallBrush),
                         BackMaterial = new DiffuseMaterial(wallBrush)
                     });
                 }
@@ -270,7 +313,11 @@ namespace LabApp.Ui
             AddXTicks(xMin, xMax, xTitle);
             AddYTicks(yMin, yMax, valueTitle);
 
-            if (hasLabels)
+            if (samePlane)
+            {
+                // Одна плоскость — оси глубины как таковой нет, подписывать нечего
+            }
+            else if (hasLabels)
             {
                 // Подписи по оси глубины — просто номера кривых (1, 2, 3…), имена — в легенде,
                 // иначе длинный текст алгоритмов толпится и наезжает на график

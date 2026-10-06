@@ -6,11 +6,14 @@
 <UserControl x:Class="LabApp.Ui.Chart3DView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:h="http://helix-toolkit.org/wpf">
+             xmlns:h="http://helix-toolkit.org/wpf"
+             ClipToBounds="True">
     <!-- Background="Transparent" здесь обязателен: без него WPF не считает пустые (прозрачные)
          места "своими" для мыши, и мышь проваливается насквозь — вращать можно было бы только
          если попасть курсором ровно на видимую линию, а это почти вся площадь графика. -->
-    <Grid Background="Transparent">
+    <!-- ClipToBounds="True": всё содержимое (3D-сцена, подписи осей, легенда) обрезается по границам
+         этого окошка и не заезжает на соседние панели — даже если график сдвинули или увеличили. -->
+    <Grid Background="Transparent" ClipToBounds="True">
         <h:HelixViewport3D x:Name="Viewport"
                             Background="Transparent"
                             ShowCoordinateSystem="False"
@@ -26,15 +29,12 @@
              камеры), поэтому они всегда читаются как нормальный текст фиксированного размера в
              пикселях — сколько бы ни крутили и ни масштабировали график. IsHitTestVisible="False",
              чтобы не мешать вращению мышью. -->
-        <Canvas x:Name="LabelCanvas" IsHitTestVisible="False"/>
+        <Canvas x:Name="LabelCanvas" IsHitTestVisible="False" ClipToBounds="True"/>
 
         <!-- Легенда — нужна только в режиме "лент" (surface — всегда одна поверхность, легенда не нужна) -->
         <Border x:Name="LegendBorder" Background="#CC202020" CornerRadius="6" Padding="10,8"
                 HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10" Visibility="Collapsed">
             <StackPanel x:Name="LegendPanel"/>
         </Border>
-
-        <TextBlock Text="ЛКМ — вращение, колесо — масштаб, ПКМ — сдвиг" FontSize="10"
-                   Foreground="#88FFFFFF" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="8"/>
     </Grid>
 </UserControl>
